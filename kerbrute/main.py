@@ -156,7 +156,7 @@ class KerberosBruter:
             for user in users:
                 if delay != 0:
                     time.sleep(delay)
-                t = pool.submit(self._handle_user_password, user, password, delay)
+                t = pool.submit(self._handle_user_password, user, password)
                 threads.append(t)
 
         for f in as_completed(threads):
@@ -209,7 +209,7 @@ class KerberosBruter:
         if self._user_credentials_were_discovered(user) or self._is_bad_user(user):
             raise KerberosBruter.InvalidUserError()
 
-        logging.info('Trying %s:%s' % (user, password))
+        logging.debug('Trying %s:%s' % (user, password))
 
         username = Principal(user, type=constants.PrincipalNameType.NT_PRINCIPAL.value)
         tgt, cipher, user_key, session_key = getKerberosTGT(username, password, self.domain, lmhash='', nthash='',
