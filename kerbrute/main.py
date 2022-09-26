@@ -23,6 +23,7 @@ import sys
 import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from threading import Lock
+import time
 
 from impacket import version
 from impacket.examples import logger
@@ -63,6 +64,7 @@ class KerbruteArgumentParser:
 
         self._parser.add_argument('-no-save-ticket', action='store_true',
                                   help='Do not save retrieved TGTs with correct credentials')
+        self._parser.add_argument('-delay', type=int, default=0, help='Delay in seconds. Default = 0')
 
     def parse_args(self):
 
@@ -84,6 +86,7 @@ class KerbruteArgumentParser:
             args.passwords = ['']
 
         args.save_ticket = not args.no_save_ticket
+
 
         return args
 
@@ -108,7 +111,7 @@ def main():
     out_users_file = open(args.outputusers, "w") if args.outputusers else None
 
     kerberos_bruter = KerberosBruter(args.domain, args.dc_ip, args.save_ticket, out_creds_file, out_users_file)
-    kerberos_bruter.attack(args.users, args.passwords, args.threads)
+    kerberos_bruter.attack(args.users, args.passwords, args.threads, args.delay)
 
     if out_creds_file:
         out_creds_file.close()
@@ -142,13 +145,18 @@ class KerberosBruter:
         self.out_creds_file = out_creds_file
         self.out_users_file = out_users_file
 
-    def attack(self, users, passwords, threads=1):
+    def attack(self, users, passwords, delay, threads=1):
         pool = ThreadPoolExecutor(threads)
         threads = []
 
+        if delay != 0:
+                logging.info('Using delay of %d seconds', delay)
+                
         for password in passwords:
             for user in users:
-                t = pool.submit(self._handle_user_password, user, password)
+                if delay != 0:
+                    time.sleep(delay)
+                t = pool.submit(self._handle_user_password, user, password, delay)
                 threads.append(t)
 
         for f in as_completed(threads):
@@ -163,7 +171,7 @@ class KerberosBruter:
     def some_password_was_discovered(self):
         return len(self.good_credentials) > 0
 
-    def _handle_user_password(self, user, password):
+    def _handle_user_password(self, user, password, delay):
         try:
             self._check_user_password(user, password)
         except KerberosBruter.InvalidUserError:
@@ -174,6 +182,7 @@ class KerberosBruter:
             raise ex
 
     def _check_user_password(self, user, password):
+        
         try:
             tgt, user_key = self._try_get_tgt(user, password)
             self._report_good_password(user, password, tgt, user_key)
