@@ -111,7 +111,7 @@ def main():
     out_users_file = open(args.outputusers, "w") if args.outputusers else None
 
     kerberos_bruter = KerberosBruter(args.domain, args.dc_ip, args.save_ticket, out_creds_file, out_users_file)
-    kerberos_bruter.attack(args.users, args.passwords, args.threads, args.delay)
+    kerberos_bruter.attack(args.users, args.passwords, args.delay, args.threads)
 
     if out_creds_file:
         out_creds_file.close()
@@ -171,7 +171,7 @@ class KerberosBruter:
     def some_password_was_discovered(self):
         return len(self.good_credentials) > 0
 
-    def _handle_user_password(self, user, password, delay):
+    def _handle_user_password(self, user, password):
         try:
             self._check_user_password(user, password)
         except KerberosBruter.InvalidUserError:
@@ -209,7 +209,7 @@ class KerberosBruter:
         if self._user_credentials_were_discovered(user) or self._is_bad_user(user):
             raise KerberosBruter.InvalidUserError()
 
-        logging.debug('Trying %s:%s' % (user, password))
+        logging.info('Trying %s:%s' % (user, password))
 
         username = Principal(user, type=constants.PrincipalNameType.NT_PRINCIPAL.value)
         tgt, cipher, user_key, session_key = getKerberosTGT(username, password, self.domain, lmhash='', nthash='',
